@@ -1,0 +1,153 @@
+Moca Assembler In-Depth Specification:
+
+    For Reference:
+        Assembly consists of the following register:
+            General Purpose Registers (Data Registers):
+
+                ax, ah, al -> ah is the higher 8-bits of ax, al is the lower 8-bits
+                    eax -> ax is the lower 16-bits
+                    eax/ax are known to be the primary accumulator(s). They are mainly used in input/output and most arithmetic instructions.
+                
+                bx, bh, bl -> bh is the higher 8-bits of bx, bl is the lower 8-bits
+                    ebx -> bx is the lower 16-bits
+                    ebx/bx are known to be base register(s). They are most commonly used in indexed addressing.
+
+                cx, ch, cl -> ch is the higher 8-bits of cx, cl is the lower 8-bits
+                    ecx -> cx is the lower 16-bits
+                    ecx/cx are known to be count register(s). They are most commonly used to store the loop count in iterative operations.
+
+                dx, dh, dl -> dh is the higher 8-bits of dx, dl is the lower 8-bits
+                    edx -> dx is the lower 16-bits
+                    edx/dx are known to be data register(s). They are also used in input/ouput operations. edx/dx are also used with eax/ax register(s) along with edx/dx register(s) to multiply and divide large values.
+
+            Pointer Registers:
+                IP -> 16-bit register; stores the offset address of the next instruction to be executed.
+                    CS:IP gives the complete address of the current instruction in the code segment.
+                
+                SP -> 16-bit register; provides offset value within the stack.
+                    SS:SP refers to the current position of data/address within the program stack.
+                    SP is the current address on the stack; indicates location of last item pushed onto the stack.
+                
+                BP -> 16-bit register; points to the beginning (base) of the stack for the current program.
+                    SS:BP gives the location of the parameter on the stack.
+            
+            Index Registers:
+                SI -> 16-bit register; used as a source index for string operations.
+                
+                DI -> 16-bit register; used as a destination index for string operations.
+            
+            Segment Registers:
+                CS -> 16-bit register; stores the starting address of the code segment.
+
+                DS -> 16-bit register; stores the starting address of the data segment.
+
+                SS -> 16-bit register; stores the starting address of the stack.
+
+                ES, FS, GS -> 16-bit registers for additional segment data.
+            
+            Control Registers:
+                OF -> overflow flag; indicates overflow of a high-order bit (leftmost bit) of data after signed arithmetic operation.
+
+                DF -> direction flag; determines left or right direction for moving or comparing string data.
+                    DF = 0: string operation takes left-to-right direction.
+                    DF = 1: string operation takes right-to-left direction.
+                
+        Assembly Consists Of The Following Sections:
+            Unitialized means the data does not have any "default" value or initial assignment.
+            Initialized means the data has a "default" value or initial assignment.
+
+            .text (.code) -> read-only; contains code from the program.
+
+            .data (.data1) -> readable/writeable; contains initialized data.
+
+            .bss -> readable/writeable; contains unitialized data.
+
+            .init -> runtime initialization instructions.
+
+            .rodata (.rodata1) -> read-only; holds all data that is globally scoped and that is read-only by the assembler, compiler or linker.
+
+        Assembly Operand Specifications:
+            reg8 -> denots an 8-bit (1-byte) general purpose register.
+
+            reg16 -> denotes a 16-bit (2-byte) general purpose register.
+
+            reg32 -> denotes a 32-bit (4-byte) general purpose register.
+
+            segreg -> denotes a segment register (CS, DS, SS, ES, FS, GS).
+
+            imm -> denotes a generic immediate operand; an immediate operand (an imm) is an operand that is directly encoded as part of a machine instruction.
+                imm8 -> a 8-bit (1-byte) value.
+                imm16 -> a 16-bit (2-byte) value.
+                imm32 -> a 32-bit (4-byte) value.
+
+                Example:
+                    mov ax, 0x20 -> 0x20 will be an imm8
+                    add ax, 0x10 -> This can be interpreted as:
+                        add reg16, imm8 or
+                        add reg16, imm16
+            
+            mem -> denotes a generic memory reference.
+                mem8 -> a 8-bit (1-byte) memory reference.
+                mem16 -> a 16-bit (2-byte) memory reference.
+                mem32 -> a 32-bit (4-byte) memory reference.
+            
+            r/m8 -> short for reg8/mem8.
+            r/m16 -> short for reg16/mem16.
+            r/m32 -> short for reg32/mem32.
+
+            Extra For MocAsm:
+                fpureg -> denotes one of the 8 FPU stack registers
+                mmxreg -> denotes one of the 8 64-bit MMX registers
+        
+        Assembly Register Encodings:
+            8-bit (1-byte) general registers:
+                AL=0, CL=1, DL=2, BL=3, AH=4, CH=5, DH=6, BH = 7.
+            
+            16-bit (2-byte) general registers:
+                AX=0, CX=1, DX=2, BX=3, SP=4, BP=5, SI=6, DI=7.
+            
+            32-bit (4-byte) general registers:
+                EAX=0, ECX=1, EDX=2, EBX=3, ESP=4, EBP=5, ESI=6, EDI=7.
+            
+            Segment registers:
+                ES=0, CS=1, SS=2, DS=3, FS=4, GS=5.
+            
+            Floating-point registers:
+                ST0=0, ST1=1, ST2=2, ST3=3, ST4=4, ST5=5, ST6=6, ST7=7.
+            
+            Control Registers:
+                CR0=0, CR2=2, CR3=3, CR4=4.
+            
+            Debug Registers:
+                DR0=0, DR1=1, DR2=2, DR3=3, DR6=6, DR7=7.
+
+            Test Registers:
+                TR3=3, TR4=4, TR5=5, TR6=6, TR7=7
+
+    Moca Assembler Features:
+        dbarr, dwarr, ddarr -> data types telling the assembler there will be an "array" of values.
+            dbarr 0x10, 0x20, 0x30
+            The above will be interpreted as an array with 3 elements each with the datatype `db`.
+        
+        res -> keyword that tells the assembler to "resize" the rval size to match the lval size.
+            mov ax, res ah
+            The above will tell the assembler to treat `res ah` as a imm16, since the assembler won't actually be capable of resizing the register size.
+            Whatever value is in `ah` will be present in the upper 8-bits of the immediate value.
+
+            mov [0x20], res ax
+            The above will have no affect and the assembler will assemble the instruction normally without `res ax` being treating, and converted, to an immediate value.
+
+            mov word [0x2030], res ah
+            The above tells the assembler to treat the value being assigned to `[0x2030]` as a word, and thus `res ah` will be treated as, and converted to, an immediate value (imm16).
+
+    Moca Assembler Token Notes:
+        MASM KW_shl:
+            If `lval` is a byte value, this instruction will be ignored by the assembler; furthermore, if `lval` is a byte-sized register the instruction will be ignored.
+
+            If `lval` is a 2-byte value, the following rule applies:
+                bits >= 0 <= 8
+            If `lval` is a word-sized register (2-bytes), the above rule applies to it as well.
+
+            If `lval` is a 4-byte value, the following rule applies:
+                bits >= 0 <= 24
+            If `lval` is a dword-sized register (4-bytes), the above rule applies to it as well.

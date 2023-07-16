@@ -1,0 +1,3 @@
+chmod +x bin/*
+
+./bin/main.o $*
